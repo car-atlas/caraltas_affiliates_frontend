@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Save, Loader2, Building2, User, MapPin, CreditCard, Globe, CheckCircle2, XCircle, Pencil, MessageCircle } from "lucide-react"
+import { Save, Loader2, Building2, User, MapPin, CreditCard, Globe, CheckCircle2, XCircle, Pencil, MessageCircle, Plus, X } from "lucide-react"
 import { agencyAPI, AgencyProfile, UpdateProfileRequest } from "@/lib/api"
 
 export default function AgencySettings() {
@@ -46,6 +46,19 @@ export default function AgencySettings() {
         accountHolderName: data.accountHolderName || undefined,
         apiUrl: data.apiUrl || undefined,
         apiKey: data.apiKey || undefined,
+        apiSources:
+          data.apiSources && data.apiSources.length > 0
+            ? data.apiSources.map((s) => ({
+                id: s.id,
+                name: s.name ?? undefined,
+                apiUrl: s.apiUrl,
+                apiKey: s.apiKey ?? undefined,
+                order: s.order,
+                isActive: s.isActive,
+              }))
+            : data.apiUrl
+              ? [{ apiUrl: data.apiUrl, apiKey: data.apiKey ?? undefined, order: 0, isActive: true }]
+              : undefined,
       })
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to load profile")
@@ -60,8 +73,17 @@ export default function AgencySettings() {
       setSaving(true)
       setError(null)
       setSuccess(null)
-      const { panNumber: _pan, ...payload } = formData
-      await agencyAPI.updateProfile(payload)
+      const { panNumber: _pan, apiSources: rawSources, ...rest } = formData
+      const apiSources =
+        rawSources?.filter((s: any) => s?.apiUrl?.trim()).map((s: any, i: number) => ({
+          id: s.id,
+          name: s.name?.trim() || undefined,
+          apiUrl: s.apiUrl.trim(),
+          apiKey: s.apiKey?.trim() || undefined,
+          order: i,
+          isActive: true,
+        })) ?? undefined
+      await agencyAPI.updateProfile({ ...rest, apiSources })
       setSuccess("Profile updated successfully!")
       await loadProfile()
       setEditing(false)
@@ -95,6 +117,17 @@ export default function AgencySettings() {
     )
   }
 
+  const apiSourcesList = formData.apiSources ?? []
+  const addApiSource = () =>
+    handleInputChange("apiSources", [...apiSourcesList, { apiUrl: "", name: undefined, apiKey: undefined, order: apiSourcesList.length, isActive: true }])
+  const removeApiSource = (index: number) =>
+    handleInputChange("apiSources", apiSourcesList.filter((_, i) => i !== index))
+  const updateApiSource = (index: number, field: "name" | "apiUrl" | "apiKey", value: string) =>
+    handleInputChange(
+      "apiSources",
+      apiSourcesList.map((s, i) => (i === index ? { ...s, [field]: value || undefined } : s))
+    )
+
   const cancelEdit = () => {
     setEditing(false)
     if (profile) {
@@ -121,6 +154,19 @@ export default function AgencySettings() {
         accountHolderName: profile.accountHolderName || undefined,
         apiUrl: profile.apiUrl || undefined,
         apiKey: profile.apiKey || undefined,
+        apiSources:
+          profile.apiSources && profile.apiSources.length > 0
+            ? profile.apiSources.map((s) => ({
+                id: s.id,
+                name: s.name ?? undefined,
+                apiUrl: s.apiUrl,
+                apiKey: s.apiKey ?? undefined,
+                order: s.order,
+                isActive: s.isActive,
+              }))
+            : profile.apiUrl
+              ? [{ apiUrl: profile.apiUrl, apiKey: profile.apiKey ?? undefined, order: 0, isActive: true }]
+              : undefined,
       })
     }
   }
@@ -426,29 +472,37 @@ export default function AgencySettings() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 sm:text-lg">
               <Globe className="h-5 w-5 text-primary" />
-              API
+              API sources
             </h2>
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600 sm:text-sm">API URL</label>
-                <input
-                  type="url"
-                  value={formData.apiUrl || ""}
-                  onChange={(e) => handleInputChange("apiUrl", e.target.value)}
-                  placeholder="https://"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600 sm:text-sm">API Key</label>
-                <input
-                  type="password"
-                  value={formData.apiKey || ""}
-                  onChange={(e) => handleInputChange("apiKey", e.target.value)}
-                  placeholder="Leave blank to keep current"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
+            <p className="mt-1 text-xs text-gray-500">Add one or more API URLs. Listings from all sources will sync.</p>
+            <div className="mt-4 space-y-4">
+              {apiSourcesList.map((source: any, index: number) => (
+                <div key={source?.id ?? index} className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Source {index + 1}</span>
+                    {apiSourcesList.length > 1 && (
+                      <button type="button" onClick={() => removeApiSource(index)} className="text-red-600 hover:text-red-700 p-1" aria-label="Remove"><X size={14} /></button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Label (optional)</label>
+                      <input type="text" value={source?.name ?? ""} onChange={(e) => updateApiSource(index, "name", e.target.value)} placeholder="e.g. Cars24" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs text-gray-600 mb-0.5">API URL *</label>
+                      <input type="url" value={source?.apiUrl ?? ""} onChange={(e) => updateApiSource(index, "apiUrl", e.target.value)} placeholder="https://" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">API Key (optional)</label>
+                      <input type="password" value={source?.apiKey ?? ""} onChange={(e) => updateApiSource(index, "apiKey", e.target.value)} placeholder="Leave blank to keep" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" autoComplete="off" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={addApiSource} className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                <Plus size={16} /> Add API source
+              </button>
             </div>
           </div>
 
@@ -547,10 +601,20 @@ export default function AgencySettings() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 sm:text-lg">
               <Globe className="h-5 w-5 text-primary" />
-              API
+              API sources
             </h2>
             <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2"><dt className="text-xs text-gray-500 sm:text-sm">API URL</dt><dd className="mt-0.5 break-all text-gray-900">{display(data.apiUrl)}</dd></div>
+              {(data.apiSources as Array<{ name?: string | null; apiUrl: string }> | undefined)?.length ? (
+                (data.apiSources as Array<{ name?: string | null; apiUrl: string }>).map((s, i) => (
+                  <div key={i} className="sm:col-span-2">
+                    <dt className="text-xs text-gray-500 sm:text-sm">{s.name ? `${s.name}` : `Source ${i + 1}`}</dt>
+                    <dd className="mt-0.5 break-all text-gray-900">{display(s.apiUrl)}</dd>
+                  </div>
+                ))
+              ) : (
+                <div className="sm:col-span-2"><dt className="text-xs text-gray-500 sm:text-sm">API URL</dt><dd className="mt-0.5 break-all text-gray-900">{display(data.apiUrl)}</dd></div>
+              )}
+              <div><dt className="text-xs text-gray-500 sm:text-sm">Integration</dt><dd className="mt-0.5 text-gray-900">{display(profile.integrationType)}</dd></div>
             </dl>
           </div>
 

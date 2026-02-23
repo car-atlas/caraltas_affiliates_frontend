@@ -23,6 +23,7 @@ export const endpoints = {
     listings: '/agency/listings',
     uploadImages: '/agency/listings/upload-images',
     users: '/agency/users',
+    sync: '/agency/sync',
   },
   clicks: {
     stats: (agencyId: string) => `/click/stats/${agencyId}`,

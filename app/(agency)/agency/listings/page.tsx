@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Car, Plus, Loader2, Link2, ExternalLink, X, Image as ImageIcon, Pencil, Trash2, MessageCircle } from "lucide-react"
+import { Car, Plus, Loader2, Link2, ExternalLink, X, Image as ImageIcon, Pencil, Trash2, MessageCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { agencyAPI, type Listing, type CreateListingRequest } from "@/lib/api"
 
@@ -61,9 +61,10 @@ export default function ListingsPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
-  const [apiUrl, setApiUrl] = useState("")
-  const [apiKey, setApiKey] = useState("")
+  type ApiSourceRow = { id?: string; name: string; apiUrl: string; apiKey: string }
+  const [apiSources, setApiSources] = useState<ApiSourceRow[]>([])
   const [apiSaving, setApiSaving] = useState(false)
+  const [syncNowLoading, setSyncNowLoading] = useState(false)
   const [apiMessage, setApiMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [whatsappNumber, setWhatsappNumber] = useState<string | null>(null)
   const [editingListing, setEditingListing] = useState<Listing | null>(null)
@@ -80,11 +81,22 @@ export default function ListingsPage() {
   const loadProfileForApi = async () => {
     try {
       const profile = await agencyAPI.getProfile()
-      setApiUrl(profile.apiUrl ?? "")
-      setApiKey("")
       setWhatsappNumber(profile.whatsappNumber ?? null)
+      if (profile.apiSources && profile.apiSources.length > 0) {
+        setApiSources(
+          profile.apiSources.map((s) => ({
+            id: s.id,
+            name: s.name ?? "",
+            apiUrl: s.apiUrl,
+            apiKey: s.apiKey ?? "",
+          }))
+        )
+      } else if (profile.apiUrl) {
+        setApiSources([{ name: "", apiUrl: profile.apiUrl, apiKey: "" }])
+      } else {
+        setApiSources([])
+      }
     } catch {
-      // ignore; profile may fail if not logged in
     }
   }
 
@@ -221,14 +233,58 @@ export default function ListingsPage() {
   const handleApiSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setApiMessage(null)
+    const valid = apiSources.filter((s) => s.apiUrl.trim())
+    if (valid.length === 0) {
+      setApiMessage({ type: "error", text: "Add at least one API URL." })
+      return
+    }
     try {
       setApiSaving(true)
-      await agencyAPI.updateProfile({ apiUrl: apiUrl.trim() || undefined, apiKey: apiKey.trim() || undefined })
-      setApiMessage({ type: "success", text: "API settings saved. Your listings will sync from this URL." })
+      await agencyAPI.updateProfile({
+        apiSources: valid.map((s, i) => ({
+          id: s.id,
+          name: s.name.trim() || undefined,
+          apiUrl: s.apiUrl.trim(),
+          apiKey: s.apiKey.trim() || undefined,
+          order: i,
+          isActive: true,
+        })),
+      })
+      setApiMessage({
+        type: "success",
+        text: valid.length === 1
+          ? "API source saved. Listings will sync from this URL."
+          : `${valid.length} API sources saved. Listings will sync from all URLs.`,
+      })
+      await loadProfileForApi()
     } catch (err) {
       setApiMessage({ type: "error", text: (err as any)?.response?.data?.message ?? "Failed to save API settings." })
     } finally {
       setApiSaving(false)
+    }
+  }
+
+  const addApiSource = () => setApiSources((prev) => [...prev, { name: "", apiUrl: "", apiKey: "" }])
+  const removeApiSource = (index: number) => setApiSources((prev) => prev.filter((_, i) => i !== index))
+  const updateApiSource = (index: number, field: keyof ApiSourceRow, value: string) =>
+    setApiSources((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)))
+
+  const hasApiSourceConfigured = apiSources.some((s) => s.apiUrl.trim())
+
+  const handleSyncNow = async () => {
+    setApiMessage(null)
+    try {
+      setSyncNowLoading(true)
+      const res = await agencyAPI.syncListings()
+      setApiMessage({
+        type: "success",
+        text: res.count > 0 ? `Synced ${res.count} listing(s) from your API.` : "Sync completed. No new listings from your API.",
+      })
+      await loadListings()
+    } catch (err) {
+      setApiMessage({ type: "error", text: (err as any)?.response?.data?.message ?? "Sync failed." })
+    } finally {
+      setSyncNowLoading(false)
     }
   }
 
@@ -338,6 +394,101 @@ export default function ListingsPage() {
 
   return (
     <div className="space-y-6">
+
+<div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-5">
+          <Link2 size={20} className="text-primary" />
+          <h2 className="text-base font-semibold text-gray-900">API sync</h2>
+        </div>
+        <div className="p-4 sm:p-5">
+          <p className="text-sm text-gray-600 mb-4">
+            Add one or more API URLs. Listings from all sources will sync and appear in search.
+          </p>
+          {apiMessage && (
+            <div
+              className={`mb-4 p-3 rounded-lg text-sm ${
+                apiMessage.type === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+              }`}
+            >
+              {apiMessage.text}
+            </div>
+          )}
+          <form onSubmit={handleApiSave} className="space-y-4 max-w-2xl">
+            {apiSources.map((source, index) => (
+              <div
+                key={source.id ?? index}
+                className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">
+                    Source {index + 1}{source.name.trim() ? ` · ${source.name}` : ""}
+                  </span>
+                  {apiSources.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeApiSource(index)}
+                      className="text-red-600 hover:text-red-700 p-1"
+                      aria-label="Remove source"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">API URL *</label>
+                  <input
+                    type="url"
+                    value={source.apiUrl}
+                    onChange={(e) => updateApiSource(index, "apiUrl", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-ring/30 focus:border-ring"
+                    placeholder="https://api.example.com/inventory"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">API Key (optional)</label>
+                  <input
+                    type="password"
+                    value={source.apiKey}
+                    onChange={(e) => updateApiSource(index, "apiKey", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-ring/30 focus:border-ring"
+                    placeholder="Leave blank to keep existing"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                onClick={addApiSource}
+                className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                <Plus size={16} />
+                Add another API
+              </button>
+              <button
+                type="submit"
+                disabled={apiSaving}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:opacity-90 disabled:opacity-60 transition-colors"
+              >
+                {apiSaving ? <Loader2 size={18} className="animate-spin" /> : <ExternalLink size={18} />}
+                Save API settings
+              </button>
+              {hasApiSourceConfigured && (
+                <button
+                  type="button"
+                  onClick={handleSyncNow}
+                  disabled={syncNowLoading}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-60 transition-colors"
+                >
+                  {syncNowLoading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                  Sync now
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      </div>
       <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Listings</h1>
 
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -760,54 +911,7 @@ export default function ListingsPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-5">
-          <Link2 size={20} className="text-primary" />
-          <h2 className="text-base font-semibold text-gray-900">API sync</h2>
-        </div>
-        <div className="p-4 sm:p-5">
-          {apiMessage && (
-            <div
-              className={`mb-4 p-3 rounded-lg text-sm ${
-                apiMessage.type === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-              }`}
-            >
-              {apiMessage.text}
-            </div>
-          )}
-          <form onSubmit={handleApiSave} className="space-y-4 max-w-2xl">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API URL *</label>
-              <input
-                type="url"
-                value={apiUrl}
-                onChange={(e) => setApiUrl(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-ring/30 focus:border-ring"
-                placeholder="https://api.example.com/inventory"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Key (optional)</label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-ring/30 focus:border-ring"
-                placeholder="Leave blank to keep existing key"
-                autoComplete="off"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={apiSaving}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:opacity-90 disabled:opacity-60 transition-colors"
-            >
-              {apiSaving ? <Loader2 size={18} className="animate-spin" /> : <ExternalLink size={18} />}
-              Save API settings
-            </button>
-          </form>
-        </div>
-      </div>
+      
     </div>
   )
 }

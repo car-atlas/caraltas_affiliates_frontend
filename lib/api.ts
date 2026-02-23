@@ -169,6 +169,16 @@ export interface OnboardingStatusResponse {
   apiKey: string | null
   integrationType: string
   apifyActorId: string | null
+  apiSources?: AgencyApiSource[]
+}
+
+export interface AgencyApiSource {
+  id: string
+  name: string | null
+  apiUrl: string
+  apiKey: string | null
+  order: number
+  isActive: boolean
 }
 
 export interface ResendVerifyPhoneOtpRequest {
@@ -424,6 +434,7 @@ export interface AgencyProfile {
   role?: string
   activeListings: number
   createdAt: string
+  apiSources?: AgencyApiSource[]
 }
 
 export interface UpdateProfileRequest {
@@ -450,6 +461,14 @@ export interface UpdateProfileRequest {
   accountHolderName?: string
   apiUrl?: string
   apiKey?: string
+  apiSources?: Array<{
+    id?: string
+    name?: string
+    apiUrl: string
+    apiKey?: string
+    order?: number
+    isActive?: boolean
+  }>
 }
 
 export interface ResendVerifyPhoneOtpRequest {
@@ -525,6 +544,12 @@ export const agencyAPI = {
 
   updateProfile: async (data: UpdateProfileRequest) => {
     const response = await api.put(endpoints.agency.profile, data)
+    return response.data
+  },
+
+  /** Trigger sync of this agency's API listings now (only this agency's data). */
+  syncListings: async (): Promise<{ message: string; count: number }> => {
+    const response = await api.post(endpoints.agency.sync)
     return response.data
   },
 
