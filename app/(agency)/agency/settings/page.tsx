@@ -624,7 +624,7 @@ export default function AgencySettings() {
               <div><dt className="text-xs text-gray-500 sm:text-sm">Email</dt><dd className="mt-0.5 text-gray-900">{display(profile.email)}</dd></div>
               <div><dt className="text-xs text-gray-500 sm:text-sm">Status</dt><dd className="mt-0.5"><span className={`font-medium ${profile.approvalStatus === "APPROVED" ? "text-green-600" : profile.approvalStatus === "PENDING" ? "text-amber-600" : "text-red-600"}`}>{profile.approvalStatus}</span></dd></div>
               <div><dt className="text-xs text-gray-500 sm:text-sm">Integration</dt><dd className="mt-0.5 text-gray-900">{display(profile.integrationType)}</dd></div>
-              <div><dt className="text-xs text-gray-500 sm:text-sm">CPC</dt><dd className="mt-0.5 text-gray-900">₹{profile.cpc ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500 sm:text-sm">CPL</dt><dd className="mt-0.5 text-gray-900">₹{profile.cpl ?? 0}</dd></div>
               <div><dt className="text-xs text-gray-500 sm:text-sm">Active Listings</dt><dd className="mt-0.5 text-gray-900">{profile.activeListings ?? 0}</dd></div>
               <div><dt className="text-xs text-gray-500 sm:text-sm">Member Since</dt><dd className="mt-0.5 text-gray-900">{profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "—"}</dd></div>
             </dl>

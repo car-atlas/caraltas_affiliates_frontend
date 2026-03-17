@@ -399,6 +399,16 @@ export interface UpdateAgencyUserRequest {
   role?: 'DEALER_ADMIN' | 'DEALER_USER'
 }
 
+export interface AgencyBill {
+  id: string
+  agencyId: string
+  periodLabel: string
+  amount: number
+  status: string
+  paidAt: string | null
+  createdAt: string
+}
+
 export interface AgencyProfile {
   id: string
   email: string
@@ -627,6 +637,26 @@ export const agencyAPI = {
 
   deleteUser: async (id: string): Promise<{ message: string }> => {
     const response = await api.delete(`${endpoints.agency.users}/${id}`)
+    return response.data
+  },
+
+  getWallet: async (): Promise<{ balance: number }> => {
+    const response = await api.get(endpoints.agency.wallet)
+    return response.data
+  },
+
+  topUpWallet: async (amount: number): Promise<{ message: string; balance: number }> => {
+    const response = await api.post(endpoints.agency.topUpWallet, { amount })
+    return response.data
+  },
+
+  getBills: async (): Promise<{ bills: AgencyBill[] }> => {
+    const response = await api.get(endpoints.agency.bills)
+    return response.data
+  },
+
+  payBill: async (billId: string): Promise<{ message: string; bill: AgencyBill }> => {
+    const response = await api.post(endpoints.agency.payBill(billId))
     return response.data
   },
 }

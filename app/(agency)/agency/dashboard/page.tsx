@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Car, MousePointerClick, BarChart3, Loader2, TrendingUp, TrendingDown, ArrowRight, Settings, UserPlus } from "lucide-react"
+import { Car, MousePointerClick, BarChart3, Loader2, TrendingUp, TrendingDown, ArrowRight, Settings, UserPlus, Wallet } from "lucide-react"
 import Link from "next/link"
 import { agencyAPI, DashboardSummary, AgencyProfile } from "@/lib/api"
 
@@ -75,7 +75,6 @@ export default function AgencyDashboard() {
     )
   }
 
-  const cpc = summary?.cpc ?? agency.cpc ?? 0
   const hasActivity = (summary?.topListings?.length ?? 0) > 0 || (summary?.recentClicks?.length ?? 0) > 0
 
   return (
@@ -132,15 +131,7 @@ export default function AgencyDashboard() {
         </div>
 
         <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm md:p-5">
-          <p className="text-xs text-gray-500 sm:text-sm">CPC</p>
-          <p className="mt-1 text-xl font-bold text-gray-900 sm:text-2xl">₹{Number(cpc).toFixed(2)}</p>
-          <div className="mt-2 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 sm:h-10 sm:w-10">
-            <BarChart3 className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
-          </div>
-        </div>
-
-        <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm md:p-5">
-          <p className="text-xs text-gray-500 sm:text-sm">CPL</p>
+          <p className="text-xs text-gray-500 sm:text-sm">CPL (per lead, 15-day window)</p>
           <p className="mt-1 text-xl font-bold text-gray-900 sm:text-2xl">
             {summary != null ? `₹${Number(summary.cpl ?? 0).toFixed(2)}` : "—"}
           </p>
@@ -284,6 +275,18 @@ export default function AgencyDashboard() {
             <div>
               <p className="text-sm font-semibold text-gray-900">Analytics</p>
               <p className="text-xs text-gray-500">Clicks & cost</p>
+            </div>
+          </Link>
+          <Link
+            href="/agency/wallet"
+            className="flex min-h-[56px] min-w-[140px] items-center gap-3 rounded-lg border border-gray-200 p-3 transition hover:border-primary hover:bg-primary/5"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <Wallet className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Wallet & Bills</p>
+              <p className="text-xs text-gray-500">Pay your bills</p>
             </div>
           </Link>
           <Link

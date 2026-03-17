@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Car, BarChart3, Settings, Users, X } from "lucide-react"
+import { Home, Car, BarChart3, Settings, Users, Wallet, X } from "lucide-react"
 
 interface AgencySidebarProps {
   mobileOpen?: boolean
@@ -16,6 +16,7 @@ export default function AgencySidebar({ mobileOpen, onClose }: AgencySidebarProp
     { href: "/agency/dashboard", label: "Dashboard", icon: Home },
     { href: "/agency/listings", label: "Listings", icon: Car },
     { href: "/agency/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/agency/wallet", label: "Wallet & Bills", icon: Wallet },
     { href: "/agency/team", label: "Team", icon: Users },
     { href: "/agency/settings", label: "Settings", icon: Settings },
   ]

@@ -153,7 +153,6 @@ export default function AnalyticsPage() {
       ["Total Clicks", String(stats.totalClicks)],
       ["Total Leads", String(stats.totalLeads ?? 0)],
       ["Total Cost", `₹${stats.totalCost.toFixed(2)}`],
-      ["CPC", `₹${stats.cpc.toFixed(2)}`],
       ["CPL", stats != null ? `₹${Number(stats.cpl ?? 0).toFixed(2)}` : "—"],
       [],
       ["Date", "Clicks"],
@@ -169,7 +168,7 @@ export default function AnalyticsPage() {
           row.listingId ? String(row.listingId).slice(0, 8) + "…" : "External",
           String(clicks),
           String(leads),
-          String((clicks * stats.cpc).toFixed(2)),
+          String(((stats.leadsByListing?.find((l) => l.listingId === row.listingId)?._count?.id ?? 0) * (stats.cpl ?? 0)).toFixed(2)),
         ]
       }),
     ]
@@ -276,7 +275,7 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <p className="text-xs text-gray-500">Clicks (period)</p>
           <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">{formatNum(stats.totalClicks)}</p>
@@ -292,11 +291,7 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <p className="text-xs text-gray-500">CPC</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">₹{stats.cpc.toFixed(2)}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <p className="text-xs text-gray-500">CPL</p>
+          <p className="text-xs text-gray-500">CPL (per lead, 15-day window)</p>
           <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">
             {stats != null ? `₹${Number(stats.cpl ?? 0).toFixed(2)}` : "—"}
           </p>
@@ -381,7 +376,7 @@ export default function AnalyticsPage() {
                       </td>
                       <td className="px-4 py-3 text-right text-gray-700 sm:px-5">{formatNum(leads)}</td>
                       <td className="px-4 py-3 text-right text-gray-700 sm:px-5">
-                        ₹{formatNum(clicks * stats.cpc)}
+                        ₹{formatNum((stats.cpl ?? 0) * (stats.leadsByListing?.find((l) => l.listingId === row.listingId)?._count?.id ?? 0))}
                       </td>
                     </tr>
                   )
