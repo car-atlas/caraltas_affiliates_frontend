@@ -24,6 +24,10 @@ export const endpoints = {
     uploadImages: '/agency/listings/upload-images',
     users: '/agency/users',
     sync: '/agency/sync',
+    wallet: '/agency/wallet',
+    topUpWallet: '/agency/wallet/top-up',
+    bills: '/agency/bills',
+    payBill: (billId: string) => `/agency/bills/${billId}/pay`,
   },
   clicks: {
     stats: (agencyId: string) => `/click/stats/${agencyId}`,
